@@ -1,38 +1,48 @@
 import React, { Component } from "react";
 import Loading from "./Loading";
 import Panel from "./Panel";
+import {
+  getTotalInterviews,
+  getLeastPopularTimeSlot,
+  getMostPopularDay,
+  getInterviewsPerDay
+ } from "helpers/selectors";
 
-import classnames from "classnames";
+ import classnames from "classnames";
+import axios from "axios";
 
 
 const data = [
   {
     id: 1,
     label: "Total Interviews",
-    value: 6
+    getValue: getTotalInterviews
   },
   {
     id: 2,
     label: "Least Popular Time Slot",
-    value: "1pm"
+    getValue: getLeastPopularTimeSlot
   },
   {
     id: 3,
     label: "Most Popular Day",
-    value: "Wednesday"
+    getValue: getMostPopularDay
   },
   {
     id: 4,
     label: "Interviews Per Day",
-    value: "2.3"
+    getValue: getInterviewsPerDay
   }
 ];
 
 class Dashboard extends Component {
 
   state = { 
-    loading: false,
+    loading: true,
     focused: null,
+    days: [],
+    appointments: {},
+    interviewers: {},
   };
 
   selectPanel(id) {
@@ -41,13 +51,26 @@ class Dashboard extends Component {
     }));
   }
 
-  //Initialize state after mounting with locally stored state if present
+  
   componentDidMount() {
+    //Initialize state after mounting with locally stored state if present
     const focused = JSON.parse(localStorage.getItem("focused"));
-
     if (focused) {
       this.setState({focused});
     }
+
+    Promise.all([
+      axios.get("/api/days"),
+      axios.get("/api/appointments"),
+      axios.get("/api/interviewers")
+    ]).then(([days, appointments, interviewers]) => {
+      this.setState({
+        loading: false,
+        days: days.data,
+        appointments: appointments.data,
+        interviewers: interviewers.data
+      });
+    });    
   }
 
   //Store new state if it changed during update
@@ -58,7 +81,7 @@ class Dashboard extends Component {
   }
 
   render() {
-
+    console.log(this.state);
     const dashboardClasses = classnames("dashboard", {
       "dashboard--focused": this.state.focused
     });
@@ -72,7 +95,8 @@ class Dashboard extends Component {
       .map(panel => 
         <Panel 
           key={panel.id} 
-          {...panel}
+          label={panel.label}
+          value={panel.getValue(this.state)}
           onSelect={event => this.selectPanel(panel.id)}>
         </Panel>);
 
